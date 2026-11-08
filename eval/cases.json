@@ -1,0 +1,14 @@
+[
+  {"requirement": "Create a login page.", "missing": ["acceptance", "validation", "security"]},
+  {"requirement": "Add a search bar to the products page so customers can find items by name.", "missing": ["acceptance", "validation"]},
+  {"requirement": "Users can reset their password by email. The reset link expires after 30 minutes and the system shows an error if the link is expired. Only the account owner may reset it.", "missing": []},
+  {"requirement": "Build an admin dashboard.", "missing": ["acceptance", "validation", "security"]},
+  {"requirement": "As a registered user, I want to upload a profile photo. Files must be JPG or PNG under 5 MB; larger or other types are rejected with an error message. The new photo appears on the profile page within 3 seconds.", "missing": []},
+  {"requirement": "Send email notifications to customers.", "missing": ["acceptance", "validation"]},
+  {"requirement": "Admins can delete user accounts. Deleting requires confirmation and an audit log entry is created. Only users with the admin role are authorized.", "missing": []},
+  {"requirement": "Integrate a payment gateway.", "missing": ["actor", "acceptance", "validation", "security"]},
+  {"requirement": "The API should return a list of orders for the authenticated user, paginated at 50 per page. Invalid page numbers return a 400 error.", "missing": []},
+  {"requirement": "Make the app faster.", "missing": ["actor", "acceptance"]},
+  {"requirement": "Students submit assignments before the deadline; late submissions are rejected with a message. Teachers can download all submissions.", "missing": ["security"]},
+  {"requirement": "Add dark mode.", "missing": ["acceptance"]}
+]

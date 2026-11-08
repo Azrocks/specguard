@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SpecGuard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --canvas:#eceff3; --panel:#ffffff; --sunk:#f4f6f8; --ink:#1a2533; --muted:#586577; --rule:#d5dbe2;
+  --accent:#3a47b5; --accent-ink:#ffffff; --accent-soft:#e8eafa;
+  --pass:#1f7a4d; --pass-soft:#e2f3ea; --block:#b8401f; --block-soft:#fbe9e3; --opt:#7a8594;
+  --shadow:0 1px 2px rgba(26,37,51,.06);
+}
+@media (prefers-color-scheme:dark){:root{
+  --canvas:#0f151c; --panel:#171f29; --sunk:#1d2733; --ink:#e7edf3; --muted:#9aabbc; --rule:#2c3a49;
+  --accent:#8d9bff; --accent-ink:#0e1230; --accent-soft:#222a52;
+  --pass:#6fd09a; --pass-soft:#16342a; --block:#ff9d7e; --block-soft:#3a211b; --opt:#8b99a8; --shadow:none;
+}}
+*{box-sizing:border-box}
+html{scroll-padding-top:70px}
+body{margin:0;background:var(--canvas);color:var(--ink);font:15px/1.55 "Hanken Grotesk",system-ui,sans-serif}
+h1,h2,h3,h4,p{margin:0}
+button,input,textarea{font:inherit;color:inherit}
+code,.mono{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;font-size:.86em}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:4px}
+.skip{position:absolute;left:-999px}.skip:focus{left:12px;top:8px;background:var(--panel);padding:6px 10px;z-index:50}
+.muted{color:var(--muted)}
+
+/* top bar */
+.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;padding:10px 20px;background:var(--panel);border-bottom:1px solid var(--rule)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px;letter-spacing:-.01em}
+.mark{width:18px;height:18px;border:2px solid var(--accent);border-radius:4px;position:relative}
+.mark::after{content:"";position:absolute;left:3px;top:-1px;width:6px;height:10px;border:solid var(--accent);border-width:0 2px 2px 0;transform:rotate(40deg)}
+#mode{margin-left:auto}
+.chip{display:inline-block;font-size:12px;line-height:1;padding:4px 8px;border-radius:99px;background:var(--sunk);color:var(--muted);border:1px solid var(--rule);white-space:nowrap}
+.chip.pass{background:var(--pass-soft);color:var(--pass);border-color:transparent}
+.chip.block{background:var(--block-soft);color:var(--block);border-color:transparent}
+.chip.accent{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+
+/* buttons */
+button{cursor:pointer}
+.btn{border:1px solid var(--rule);background:var(--panel);border-radius:6px;padding:8px 14px;font-weight:600}
+.btn:hover{background:var(--sunk)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--accent);padding:4px 8px}
+.btn:disabled{opacity:.5;cursor:not-allowed;filter:none}
+
+/* shell */
+.shell{display:grid;grid-template-columns:240px minmax(0,1fr);gap:24px;max-width:1240px;margin:0 auto;padding:22px 20px 60px}
+.rail h2{font-size:13px;font-weight:600;color:var(--muted);margin:0 0 8px 8px}
+#list{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+#list button{width:100%;text-align:left;background:transparent;border:0;border-left:3px solid transparent;border-radius:0 6px 6px 0;padding:8px 10px}
+#list button:hover{background:var(--panel)}
+#list button[aria-current=true]{background:var(--panel);border-left-color:var(--accent);box-shadow:var(--shadow)}
+#list .t{display:block;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#list .s{display:block;font-size:12.5px;color:var(--muted)}
+@media (max-width:860px){.shell{grid-template-columns:1fr;gap:14px}#list{max-height:170px;overflow:auto}}
+
+/* project header + gate rail */
+.phead{display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+.phead h1{font-size:26px;line-height:1.2;letter-spacing:-.015em;font-weight:700}
+.gates{list-style:none;margin:0 0 22px;padding:0;display:grid;grid-template-columns:repeat(5,1fr)}
+.gates li{position:relative;text-align:center;padding:0 4px}
+.gates li:not(:first-child)::before{content:"";position:absolute;top:13px;left:-50%;width:100%;height:2px;background:var(--rule)}
+.gates li.done::before,.gates li.now::before{background:var(--pass)}
+.node{position:relative;z-index:1;display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;font-weight:700;font-size:13px;background:var(--panel);border:2px dashed var(--rule);color:var(--opt)}
+.done .node{background:var(--pass);border:2px solid var(--pass);color:#fff}
+.now .node{border:2px solid var(--accent);color:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
+.gname{display:block;font-weight:600;margin-top:4px}
+.gstat{display:block;font-size:12.5px;color:var(--muted)}
+.locked .gname{color:var(--opt)}
+@media (max-width:560px){.gstat{display:none}.gname{font-size:13px}}
+
+/* workspace */
+.work{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:22px;align-items:start}
+.side{position:sticky;top:76px}
+@media (max-width:1060px){.work{grid-template-columns:1fr}.side{position:static;order:-1}}
+.sec{background:var(--panel);border:1px solid var(--rule);border-radius:8px;box-shadow:var(--shadow);margin-bottom:18px}
+.sec-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 18px 0}
+.sec-head h2{font-size:15px;font-weight:700}
+.sec-body{padding:10px 18px 18px}
+.req-text{white-space:pre-wrap;font-size:16.5px;line-height:1.6;max-width:68ch;padding-left:14px;border-left:3px solid var(--rule)}
+textarea,input{width:100%;background:var(--sunk);border:1px solid var(--rule);border-radius:6px;padding:9px 10px}
+textarea{min-height:84px;resize:vertical;line-height:1.5}
+
+/* checks */
+.checks{list-style:none;margin:0;padding:0}
+.check{display:grid;grid-template-columns:22px 1fr;gap:10px;padding:14px 0;border-top:1px solid var(--rule)}
+.check:first-child{border-top:0}
+.ico{width:20px;height:20px;margin-top:1px}
+.check.pass .ico{color:var(--pass)}.check.block .ico{color:var(--block)}.check.opt .ico,.check.idle .ico{color:var(--opt)}
+.check-head{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.check-head strong{font-weight:600}
+.q{margin:4px 0 8px;color:var(--muted);max-width:64ch}
+.ans{margin-top:6px;padding:8px 10px;background:var(--sunk);border-radius:6px;white-space:pre-wrap}
+
+/* next step */
+.next{border-left:4px solid var(--accent)}
+.next h2{font-size:16px;margin-bottom:6px}
+.meter{height:6px;background:var(--sunk);border-radius:99px;overflow:hidden;margin:12px 0 6px}
+.meter i{display:block;height:100%;background:var(--pass)}
+.actions{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+.hint{font-size:13.5px;color:var(--muted);margin-top:10px}
+
+/* tabs */
+.tabs{display:flex;gap:2px;padding:0 12px;border-bottom:1px solid var(--rule);overflow-x:auto}
+.tabs button{background:transparent;border:0;border-bottom:3px solid transparent;padding:12px 10px 9px;font-weight:600;color:var(--muted)}
+.tabs button[aria-selected=true]{color:var(--ink);border-bottom-color:var(--accent)}
+.panel-body{padding:18px}
+.lede{max-width:70ch;margin-bottom:12px}
+.reqcard{padding:14px 0;border-top:1px solid var(--rule)}
+.reqcard:first-of-type{border-top:0}
+.reqcard>div{display:flex;gap:10px}
+.crit{list-style:none;margin:10px 0 0 0;padding:0 0 0 12px;border-left:2px solid var(--rule);display:grid;gap:6px}
+.crit li{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+details{border:1px solid var(--rule);border-radius:6px;margin:8px 0;background:var(--panel)}
+summary{cursor:pointer;padding:10px 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+details[open]>summary{border-bottom:1px solid var(--rule)}
+.dbody{padding:10px 14px}
+.dbody ol{margin:4px 0 10px;padding-left:20px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--rule);vertical-align:top}
+th{font-weight:600;color:var(--muted);font-size:13px}
+.bar{width:110px;height:6px;background:var(--sunk);border-radius:99px;overflow:hidden}.bar i{display:block;height:100%;background:var(--pass)}
+.callout{padding:10px 12px;border-radius:6px;background:var(--sunk);border:1px solid var(--rule);margin-bottom:12px}
+.timeline{list-style:none;margin:0;padding:0}
+.timeline li{padding:8px 0 8px 16px;border-left:2px solid var(--rule);position:relative}
+.timeline li::before{content:"";position:absolute;left:-6px;top:15px;width:10px;height:10px;border-radius:50%;background:var(--accent)}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+
+/* empty state */
+.empty{max-width:640px;padding:28px 4px}
+.empty h1{font-size:30px;line-height:1.2;letter-spacing:-.02em;margin-bottom:10px}
+.empty p{max-width:56ch}
+.ex{display:grid;gap:8px;margin:18px 0}
+.ex button{text-align:left;padding:12px 14px;background:var(--panel);border:1px solid var(--rule);border-radius:8px}
+.ex button:hover{border-color:var(--accent)}
+.ex small{display:block;color:var(--muted)}
+
+/* dialog + toasts */
+dialog{width:min(560px,calc(100% - 28px));border:1px solid var(--rule);border-radius:10px;padding:20px;background:var(--panel);color:var(--ink)}
+dialog::backdrop{background:rgba(10,16,24,.55)}
+dialog h2{font-size:19px;margin-bottom:10px}
+dialog label{display:block;font-weight:600;margin:12px 0 4px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.chips button{cursor:pointer}
+#toasts{position:fixed;right:16px;bottom:16px;display:grid;gap:8px;z-index:60;max-width:min(420px,calc(100% - 32px))}
+.toast{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:8px;background:var(--ink);color:var(--canvas);box-shadow:0 6px 24px rgba(0,0,0,.25)}
+.toast.err{background:var(--block);color:#fff}
+.toast button{background:transparent;border:0;color:inherit;font-size:18px;line-height:1;padding:0 2px;margin-left:auto}
+@media (prefers-reduced-motion:no-preference){.meter i{transition:width .35s ease}.node{transition:background .25s,border-color .25s}}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="brand"><span class="mark" aria-hidden="true"></span>SpecGuard</div>
+  <span id="mode" class="chip" title=""></span>
+  <button class="btn primary" data-act="new">New project</button>
+</header>
+<div class="shell">
+  <nav class="rail" aria-label="Projects"><h2>Projects</h2><ul id="list"></ul></nav>
+  <main id="main" tabindex="-1"></main>
+</div>
+<div id="toasts" aria-live="polite"></div>
+
+<dialog id="dlg" aria-labelledby="dlg-title">
+  <form id="newForm">
+    <h2 id="dlg-title">New project</h2>
+    <label for="n-req">Requirement</label>
+    <textarea id="n-req" maxlength="4000" required placeholder="Describe the feature in a sentence or two."></textarea>
+    <div class="chips" id="chips"></div>
+    <label for="n-title">Title <span class="muted">(optional)</span></label>
+    <input id="n-title" maxlength="120" placeholder="Taken from the requirement if left empty">
+    <div class="row" style="justify-content:flex-end;margin-top:18px">
+      <button type="button" class="btn" data-act="close-new">Cancel</button>
+      <button type="submit" class="btn primary">Create project</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+const $ = (s, r = document) => r.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const GATES = ["Submit", "Clarify", "Spec", "Approve", "Tests"];
+const IDX = {SUBMITTED:0, NEEDS_CLARIFICATION:1, SPEC_READY:2, APPROVED:3, TESTS_READY:4};
+const STATE_LABEL = {SUBMITTED:"Submitted", NEEDS_CLARIFICATION:"Needs answers", SPEC_READY:"Spec ready", APPROVED:"Approved", TESTS_READY:"Tests generated"};
+const CHECKS = [["actor","Who uses it","blocking"],["acceptance","Observable result","blocking"],["validation","Input handling","blocking"],["security","Access and security","blocking"],["data","Data","advisory"],["performance","Performance","advisory"]];
+const EXAMPLES = [
+  ["Vague", "Create a login page."],
+  ["Vague", "Send email notifications to customers."],
+  ["Nearly complete", "As a registered user, I want to upload a profile photo. Files must be JPG or PNG under 5 MB; larger or other types are rejected with an error message. The new photo appears on the profile page within 3 seconds."]
+];
+const ACTION_LABEL = {create:"Created", analyze:"Analyzed", answer:"Answers saved", approve:"Approved", generate_tests:"Tests generated", revise:"Requirement revised"};
+const ICON = {
+  pass:'<svg class="ico" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="10" cy="10" r="8.2"/><path d="M6 10.3l2.7 2.7L14 7.6"/></svg>',
+  block:'<svg class="ico" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="10" cy="10" r="8.2"/><path d="M7 7l6 6M13 7l-6 6"/></svg>',
+  opt:'<svg class="ico" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="3 3" aria-hidden="true"><circle cx="10" cy="10" r="8.2"/></svg>',
+  idle:'<svg class="ico" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="10" cy="10" r="8.2"/></svg>'
+};
+const CHECK_SVG = '<svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M4 10.5l4 4 8-9"/></svg>';
+
+const S = {projects:[], cur:null, tab:"history", coverage:null, loadingCov:false, editing:false, reqDraft:null, busy:"", drafts:{}, note:"", focusSel:null};
+
+async function api(path, opts = {}) {
+  const res = await fetch("/api" + path, {headers:{"Content-Type":"application/json"}, ...opts, body: opts.body ? JSON.stringify(opts.body) : undefined});
+  const ct = res.headers.get("content-type") || "";
+  const data = ct.includes("json") ? await res.json().catch(() => ({})) : await res.text();
+  if (!res.ok) {
+    const d = data && data.detail;
+    throw new Error(typeof d === "string" ? d : Array.isArray(d) ? d.map((x) => x.msg).join("; ") : "Request failed (" + res.status + ")");
+  }
+  return data;
+}
+function toast(msg, kind = "ok") {
+  const t = document.createElement("div");
+  t.className = "toast " + kind; t.setAttribute("role", kind === "err" ? "alert" : "status");
+  const span = document.createElement("span"); span.textContent = msg;
+  const x = document.createElement("button"); x.type = "button"; x.setAttribute("aria-label", "Dismiss"); x.textContent = "\u00d7"; x.onclick = () => t.remove();
+  t.append(span, x); $("#toasts").append(t); setTimeout(() => t.remove(), kind === "err" ? 9000 : 4000);
+}
+async function busy(label, fn) {
+  if (S.busy) return;
+  S.busy = label; paint();
+  try { await fn(); } catch (e) { toast(e.message, "err"); } finally { S.busy = ""; paint(); }
+}
+
+/* ---------- state helpers ---------- */
+function setProject(p) {
+  const changed = !S.cur || S.cur.id !== p.id;
+  if (changed) { S.drafts = {}; S.note = ""; S.editing = false; S.reqDraft = null; }
+  S.cur = p; S.coverage = null;
+  S.tab = p.state === "TESTS_READY" ? "tests" : (p.spec ? "spec" : "history");
+  try { localStorage.setItem("specguard:last", p.id); } catch (_) {}
+  refreshList();
+}
+const draftVal = (p, id) => (S.drafts[id] ?? p.answers[id] ?? "");
+function checkStatus(p, id) {
+  if (p.state === "SUBMITTED" && !p.gaps.length) return {k:"idle", label:"Not checked yet"};
+  const g = p.gaps.find((x) => x.id === id);
+  if (!g) return {k:"pass", label:"Covered by the requirement"};
+  if ((p.answers[id] || "").trim()) return {k:"pass", label:"Clarified"};
+  return g.severity === "blocking" ? {k:"block", label:"Needs an answer"} : {k:"opt", label:"Optional"};
+}
+const tabsFor = (p) => [p.spec && ["spec","Spec"], p.tests && ["tests","Tests"], p.tests && ["coverage","Coverage"], ["history","History"]].filter(Boolean);
+
+/* ---------- views ---------- */
+function emptyView() {
+  return `<section class="empty"><h1>Review a requirement before it becomes code.</h1>
+  <p class="muted">SpecGuard finds what is missing, asks for answers, and only writes a spec once the gaps are closed. Tests are generated after a person approves it.</p>
+  <div class="ex" role="list">${EXAMPLES.map((e, i) => `<button role="listitem" data-act="example" data-i="${i}">${esc(e[1].length > 90 ? e[1].slice(0, 90) + "\u2026" : e[1])}<small>${esc(e[0])} example</small></button>`).join("")}</div>
+  <button class="btn primary" data-act="new">New project</button></section>`;
+}
+function gateRail(p) {
+  const idx = IDX[p.state], fin = p.state === "TESTS_READY";
+  return '<ol class="gates" aria-label="Workflow gates">' + GATES.map((n, i) => {
+    const k = fin || i < idx ? "done" : i === idx ? "now" : "locked";
+    const stat = k === "done" ? "Passed" : k === "now" ? "In progress" : "Locked";
+    return `<li class="${k}" ${k === "now" ? 'aria-current="step"' : ""}><span class="node">${k === "done" ? CHECK_SVG : i + 1}</span><span class="gname">${n}</span><span class="gstat">${stat}</span></li>`;
+  }).join("") + "</ol>";
+}
+function requirementView(p) {
+  if (S.editing) {
+    return `<section class="sec"><div class="sec-head"><h2>Requirement</h2></div><div class="sec-body">
+      <label class="muted" for="req-edit">Edit requirement</label>
+      <textarea id="req-edit">${esc(S.reqDraft ?? p.requirement)}</textarea>
+      ${p.state !== "SUBMITTED" ? '<p class="hint">Saving resets the analysis, approval, spec and tests.</p>' : ""}
+      <div class="row"><button class="btn primary" data-act="revise" ${S.busy ? "disabled" : ""}>Save revision</button><button class="btn" data-act="cancel-edit">Cancel</button></div></div></section>`;
+  }
+  return `<section class="sec"><div class="sec-head"><h2>Requirement</h2><button class="btn ghost" data-act="edit">Edit</button></div>
+    <div class="sec-body"><p class="req-text">${esc(p.requirement)}</p></div></section>`;
+}
+function checksView(p) {
+  const req = CHECKS.filter((c) => c[2] === "blocking");
+  const clear = req.filter((c) => checkStatus(p, c[0]).k === "pass").length;
+  const rows = CHECKS.map(([id, name, sev]) => {
+    const st = checkStatus(p, id), g = p.gaps.find((x) => x.id === id);
+    const editable = p.state === "NEEDS_CLARIFICATION" && g;
+    const answer = (p.answers[id] || "").trim();
+    return `<li class="check ${st.k}">${ICON[st.k]}<div>
+      <div class="check-head"><strong>${esc(name)}</strong><span class="chip ${st.k === "pass" ? "pass" : st.k === "block" ? "block" : ""}">${esc(st.label)}</span>${sev === "advisory" ? '<span class="chip">Advisory</span>' : ""}</div>
+      ${g && (st.k === "block" || st.k === "opt") ? `<p class="q">${esc(g.question)}</p>` : ""}
+      ${editable ? `<textarea data-gap="${esc(id)}" aria-label="Answer: ${esc(name)}">${esc(draftVal(p, id))}</textarea>` : (answer ? `<p class="ans">${esc(answer)}</p>` : "")}
+    </div></li>`;
+  }).join("");
+  return `<section class="sec"><div class="sec-head"><h2>Readiness checks</h2><span class="muted">${p.state === "SUBMITTED" && !p.gaps.length ? "Run the analysis to check" : clear + " of " + req.length + " required checks clear"}</span></div>
+    <div class="sec-body"><ul class="checks">${rows}</ul></div></section>`;
+}
+function nextStep(p) {
+  const req = CHECKS.filter((c) => c[2] === "blocking");
+  const clear = req.filter((c) => checkStatus(p, c[0]).k === "pass").length;
+  const b = S.busy, dis = b ? "disabled" : "";
+  let title = "", body = "", actions = "", meter = "";
+  if (p.state === "SUBMITTED") {
+    title = "Analyze the requirement"; body = "SpecGuard checks it for missing detail before any spec is written.";
+    actions = `<button class="btn primary" data-act="analyze" ${dis}>${b === "analyze" ? "Analyzing\u2026" : "Analyze requirement"}</button>`;
+  } else if (p.state === "NEEDS_CLARIFICATION") {
+    const blocking = p.gaps.filter((g) => g.severity === "blocking");
+    const ready = blocking.every((g) => draftVal(p, g.id).trim());
+    const left = blocking.filter((g) => !draftVal(p, g.id).trim()).length;
+    title = "Answer the open questions"; body = "Every required check must be clear before a spec can be generated.";
+    meter = `<div class="meter" role="img" aria-label="${clear} of ${req.length} required checks clear"><i style="width:${(clear / req.length) * 100}%"></i></div><p class="muted">${clear} of ${req.length} required checks clear</p>`;
+    actions = `<button class="btn primary" data-act="save-recheck" ${dis || (ready ? "" : "disabled")}>${b === "save-recheck" ? "Checking\u2026" : "Save and re-check"}</button>
+      <button class="btn" data-act="save" ${dis}>${b === "save" ? "Saving\u2026" : "Save draft"}</button>` +
+      (ready ? "" : `<p class="hint">${left} required question${left === 1 ? "" : "s"} left to answer.</p>`);
+  } else if (p.state === "SPEC_READY") {
+    title = "Review the spec, then approve it"; body = "Approval is the human gate. Tests can only be generated from an approved spec.";
+    actions = `<label class="muted" for="note">Approval note (optional)</label><input id="note" maxlength="500" value="${esc(S.note)}">
+      <button class="btn primary" data-act="approve" ${dis}>${b === "approve" ? "Approving\u2026" : "Approve spec"}</button>`;
+  } else if (p.state === "APPROVED") {
+    title = "Generate tests"; body = "Tests will be linked to the requirement and criterion they cover.";
+    actions = `<button class="btn primary" data-act="tests" ${dis}>${b === "tests" ? "Generating\u2026" : "Generate tests"}</button>`;
+  } else {
+    title = "All gates passed"; body = "The tests are generated, not executed. Run them against a real implementation before calling any requirement verified.";
+    actions = `<button class="btn" data-act="copy-md">Copy as Markdown</button><button class="btn" data-act="download-md">Download .md</button>`;
+  }
+  return `<aside class="sec next side" aria-label="Next step"><div class="sec-body" style="padding-top:18px"><h2>${esc(title)}</h2><p class="muted">${esc(body)}</p>${meter}<div class="actions">${actions}</div></div></aside>`;
+}
+function specTab(p) {
+  const s = p.spec, ids = new Set(s.requirements.map((r) => r.id));
+  const crit = (c) => `<li><code>${esc(c.id)}</code><span class="chip">${esc(c.category)}</span><span>${esc(c.text)}</span></li>`;
+  const orphans = s.criteria.filter((c) => !ids.has(c.requirement_id));
+  return `<p class="lede">${esc(s.summary)}</p>` +
+    (s.actors.length ? `<p class="lede"><strong>Actors:</strong> ${s.actors.map(esc).join(", ")}</p>` : "") +
+    s.requirements.map((r) => `<div class="reqcard"><div><code>${esc(r.id)}</code><p>${esc(r.text)}</p></div><ul class="crit">${s.criteria.filter((c) => c.requirement_id === r.id).map(crit).join("") || '<li class="muted">No acceptance criteria for this requirement.</li>'}</ul></div>`).join("") +
+    (orphans.length ? `<div class="reqcard"><p class="muted">Criteria not linked to a requirement</p><ul class="crit">${orphans.map(crit).join("")}</ul></div>` : "") +
+    (s.assumptions.length ? `<h4 style="margin-top:14px">Assumptions</h4><ul>${s.assumptions.map((a) => `<li>${esc(a)}</li>`).join("")}</ul>` : "");
+}
+function testsTab(p) {
+  const byReq = {}; p.tests.forEach((t) => (byReq[t.requirement_id] = byReq[t.requirement_id] || []).push(t));
+  return `<div class="callout">Generated, not executed. ${p.tests.length} test${p.tests.length === 1 ? "" : "s"} across ${Object.keys(byReq).length} requirement${Object.keys(byReq).length === 1 ? "" : "s"}.</div>` +
+    Object.entries(byReq).map(([rid, ts]) => `<h4 style="margin:14px 0 4px"><code>${esc(rid)}</code></h4>` + ts.map((t) =>
+      `<details><summary><code>${esc(t.id)}</code><span class="chip ${t.kind === "negative" ? "block" : "accent"}">${esc(t.kind)}</span><span>${esc(t.title)}</span><span class="chip">not executed</span></summary>
+      <div class="dbody"><ol>${t.steps.map((s) => `<li>${esc(s)}</li>`).join("")}</ol><p><strong>Expected:</strong> ${esc(t.expected)}</p><p class="muted">Covers ${esc(t.requirement_id)} / ${esc(t.criterion_id)}</p></div></details>`).join("")).join("");
+}
+function coverageTab(p) {
+  if (!S.coverage) return '<p class="muted">Loading coverage\u2026</p>';
+  const rows = S.coverage.rows, gen = rows.reduce((a, r) => a + r.tests_generated, 0), exe = rows.reduce((a, r) => a + r.tests_executed, 0);
+  return `<div class="callout">${exe} of ${gen} generated tests have been executed.${exe === 0 ? " No requirement is verified yet." : ""}</div>
+  <div style="overflow-x:auto"><table><thead><tr><th>Requirement</th><th>Tests</th><th>Executed</th><th>Status</th></tr></thead><tbody>` +
+    rows.map((r) => `<tr><td><code>${esc(r.requirement_id)}</code> ${esc(r.text)}</td><td>${r.tests_generated}</td><td><div class="bar" aria-hidden="true"><i style="width:${r.tests_generated ? (r.tests_executed / r.tests_generated) * 100 : 0}%"></i></div>${r.tests_executed}</td><td><span class="chip ${r.status === "no tests" ? "block" : ""}">${esc(r.status)}</span></td></tr>`).join("") + "</tbody></table></div>";
+}
+function historyTab(p) {
+  return '<ol class="timeline">' + p.history.map((h) => `<li><strong>${esc(ACTION_LABEL[h.action] || h.action)}</strong>${h.to_state ? ` <span class="chip">${esc(STATE_LABEL[h.to_state] || h.to_state)}</span>` : ""}<div class="muted">${esc(h.at.replace("T", " ").slice(0, 19))} UTC${h.note ? " \u2013 " + esc(h.note) : ""}</div></li>`).join("") + "</ol>";
+}
+function tabsView(p) {
+  const tabs = tabsFor(p);
+  if (!tabs.some((t) => t[0] === S.tab)) S.tab = tabs[0][0];
+  const body = S.tab === "spec" ? specTab(p) : S.tab === "tests" ? testsTab(p) : S.tab === "coverage" ? coverageTab(p) : historyTab(p);
+  return `<section class="sec"><div class="tabs" role="tablist" aria-label="Project details">${tabs.map(([id, label]) => `<button role="tab" id="tab-${id}" aria-selected="${S.tab === id}" aria-controls="panel" data-act="tab" data-tab="${id}">${label}</button>`).join("")}</div>
+    <div class="panel-body" id="panel" role="tabpanel" aria-labelledby="tab-${S.tab}">${body}</div></section>`;
+}
+function projectView(p) {
+  return `<div class="phead"><h1>${esc(p.title)}</h1><span class="chip accent" style="margin-top:8px">${esc(STATE_LABEL[p.state])}</span></div>` + gateRail(p) +
+    `<div class="work"><div>${requirementView(p)}${checksView(p)}${tabsView(p)}</div>${nextStep(p)}</div>`;
+}
+function paint() {
+  $("#main").innerHTML = S.cur ? projectView(S.cur) : emptyView();
+  renderList();
+  if (S.focusSel) { const el = $(S.focusSel); if (el) el.focus(); S.focusSel = null; }
+  if (S.cur && S.tab === "coverage" && !S.coverage && !S.loadingCov) loadCoverage();
+}
+function renderList() {
+  $("#list").innerHTML = S.projects.length ? S.projects.map((p) =>
+    `<li><button data-act="open" data-id="${esc(p.id)}" aria-current="${!!S.cur && S.cur.id === p.id}"><span class="t">${esc(p.title)}</span><span class="s">${esc(STATE_LABEL[p.state] || p.state)}</span></button></li>`).join("")
+    : '<li class="muted" style="padding:6px 10px">No projects yet.</li>';
+}
+
+/* ---------- actions ---------- */
+async function refreshList() { try { S.projects = await api("/projects"); renderList(); } catch (_) {} }
+async function loadCoverage() {
+  S.loadingCov = true;
+  try { S.coverage = await api("/projects/" + S.cur.id + "/coverage"); } catch (e) { toast(e.message, "err"); S.coverage = {rows:[]}; }
+  S.loadingCov = false; paint();
+}
+const post = (path, body) => api("/projects/" + S.cur.id + path, {method:"POST", body});
+async function saveDraftAnswers() {
+  const answers = {};
+  S.cur.gaps.forEach((g) => { const v = draftVal(S.cur, g.id).trim(); if (v) answers[g.id] = v; });
+  if (!Object.keys(answers).length) throw new Error("Write at least one answer first.");
+  const p = await post("/answers", {answers}); S.cur = p; return p;
+}
+function openDialog(text = "") {
+  const d = $("#dlg"); $("#n-req").value = text; $("#n-title").value = "";
+  if (d.showModal) d.showModal(); else d.setAttribute("open", "");
+  $("#n-req").focus();
+}
+function closeDialog() { const d = $("#dlg"); if (d.close) d.close(); else d.removeAttribute("open"); }
+async function createProject() {
+  const requirement = $("#n-req").value.trim();
+  const title = $("#n-title").value.trim() || requirement.replace(/\s+/g, " ").slice(0, 48);
+  try { const p = await api("/projects", {method:"POST", body:{title, requirement}}); closeDialog(); setProject(p); paint(); toast("Project created."); }
+  catch (e) { toast(e.message, "err"); }
+}
+async function downloadMd(copy) {
+  try {
+    const md = await api("/projects/" + S.cur.id + "/export");
+    if (copy) { await navigator.clipboard.writeText(md); toast("Markdown copied."); return; }
+    const a = document.createElement("a"), slug = S.cur.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "spec";
+    a.href = URL.createObjectURL(new Blob([md], {type:"text/markdown"})); a.download = slug + ".md"; a.click(); URL.revokeObjectURL(a.href);
+  } catch (e) { toast("Could not export: " + e.message, "err"); }
+}
+const HANDLERS = {
+  new: () => openDialog(),
+  "close-new": () => closeDialog(),
+  example: (el) => openDialog(EXAMPLES[+el.dataset.i][1]),
+  open: (el) => busy("open", async () => { setProject(await api("/projects/" + el.dataset.id)); }),
+  edit: () => { S.editing = true; S.reqDraft = null; S.focusSel = "#req-edit"; paint(); },
+  "cancel-edit": () => { S.editing = false; S.reqDraft = null; paint(); },
+  revise: () => {
+    const text = (S.reqDraft ?? S.cur.requirement).trim();
+    if (S.cur.state !== "SUBMITTED" && !confirm("Revising resets the analysis and discards any approved spec and tests. Continue?")) return;
+    return busy("revise", async () => { setProject(await api("/projects/" + S.cur.id + "/requirement", {method:"PUT", body:{requirement:text}})); toast("Requirement revised. Analysis reset."); });
+  },
+  analyze: () => busy("analyze", async () => {
+    const p = await post("/analyze"); setProject(p);
+    toast(p.state === "SPEC_READY" ? "No blocking gaps. Spec generated." : p.open_blocking.length + " blocking question" + (p.open_blocking.length === 1 ? "" : "s") + " need answers.");
+  }),
+  save: () => busy("save", async () => { setProject(await saveDraftAnswers()); toast("Draft saved."); }),
+  "save-recheck": () => busy("save-recheck", async () => {
+    let p = await saveDraftAnswers();
+    if (p.open_blocking.length === 0) { p = await post("/analyze"); toast(p.state === "SPEC_READY" ? "All checks clear. Spec generated." : "More questions came up."); }
+    else toast("Saved. " + p.open_blocking.length + " required question(s) still open.");
+    setProject(p);
+  }),
+  approve: () => busy("approve", async () => { setProject(await post("/approve", {note:S.note})); toast("Spec approved."); }),
+  tests: () => busy("tests", async () => { setProject(await post("/tests")); toast("Tests generated. None have been executed."); }),
+  tab: (el) => { S.tab = el.dataset.tab; S.focusSel = `[data-tab="${S.tab}"]`; paint(); },
+  "copy-md": () => downloadMd(true),
+  "download-md": () => downloadMd(false)
+};
+document.addEventListener("click", (e) => { const el = e.target.closest("[data-act]"); if (el && HANDLERS[el.dataset.act]) HANDLERS[el.dataset.act](el); });
+document.addEventListener("input", (e) => {
+  const t = e.target;
+  if (t.dataset && t.dataset.gap !== undefined) { S.drafts[t.dataset.gap] = t.value; const btn = $('[data-act="save-recheck"]'); if (btn && S.cur) { const ready = S.cur.gaps.filter((g) => g.severity === "blocking").every((g) => draftVal(S.cur, g.id).trim()); btn.disabled = !ready || !!S.busy; } }
+  else if (t.id === "req-edit") S.reqDraft = t.value;
+  else if (t.id === "note") S.note = t.value;
+});
+$("#newForm").addEventListener("submit", (e) => { e.preventDefault(); createProject(); });
+$("#n-req").addEventListener("keydown", (e) => { if ((e.ctrlKey || e.metaKey) && e.key === "Enter") $("#newForm").requestSubmit(); });
+$("#chips").innerHTML = EXAMPLES.map((e, i) => `<button type="button" class="chip" data-chip="${i}">${esc(e[1].length > 34 ? e[1].slice(0, 34) + "\u2026" : e[1])}</button>`).join("");
+$("#chips").addEventListener("click", (e) => { const b = e.target.closest("[data-chip]"); if (b) { $("#n-req").value = EXAMPLES[+b.dataset.chip][1]; $("#n-req").focus(); } });
+
+(async function init() {
+  try { const h = await api("/health"); $("#mode").textContent = h.mode === "llm" ? "Analysis by Claude" : "Offline checklist"; $("#mode").title = h.mode === "llm" ? "Gaps, specs and tests are written by Claude." : "No API key set. A keyword checklist finds gaps; set ANTHROPIC_API_KEY for Claude."; } catch (_) {}
+  await refreshList();
+  let last = null; try { last = localStorage.getItem("specguard:last"); } catch (_) {}
+  if (last && S.projects.some((p) => p.id === last)) { try { setProject(await api("/projects/" + last)); } catch (_) {} }
+  paint();
+})();
+</script>
+</body>
+</html>
