@@ -45,7 +45,8 @@ def _transition(p: dict, new_state: State, action: str, note: str = "", **fields
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok", "mode": get_backend().name}
+    b = get_backend()
+    return {"status": "ok", "mode": b.name, "label": getattr(b, "label", b.name)}
 
 
 @app.post("/api/projects", status_code=201)

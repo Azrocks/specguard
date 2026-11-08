@@ -446,7 +446,7 @@ $("#chips").innerHTML = EXAMPLES.map((e, i) => `<button type="button" class="chi
 $("#chips").addEventListener("click", (e) => { const b = e.target.closest("[data-chip]"); if (b) { $("#n-req").value = EXAMPLES[+b.dataset.chip][1]; $("#n-req").focus(); } });
 
 (async function init() {
-  try { const h = await api("/health"); $("#mode").textContent = h.mode === "llm" ? "Analysis by Claude" : "Offline checklist"; $("#mode").title = h.mode === "llm" ? "Gaps, specs and tests are written by Claude." : "No API key set. A keyword checklist finds gaps; set ANTHROPIC_API_KEY for Claude."; } catch (_) {}
+    try { const h = await api("/health"); $("#mode").textContent = h.mode === "llm" ? "Analysis by " + h.label : "Offline checklist"; $("#mode").title = h.mode === "llm" ? "Gaps, specs and tests are written by " + h.label + "." : "No API key set. A keyword checklist finds gaps; set GEMINI_API_KEY for a free model."; } catch (_) {}
   await refreshList();
   let last = null; try { last = localStorage.getItem("specguard:last"); } catch (_) {}
   if (last && S.projects.some((p) => p.id === last)) { try { setProject(await api("/projects/" + last)); } catch (_) {} }
